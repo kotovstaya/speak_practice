@@ -1,0 +1,15 @@
+fairseq==0.12.2
+transformers==4.35.2
+accelerate==0.24.1
+datasets[audio]==2.15.0
+torch==2.1.1
+torchaudio==2.1.1
+XSLTools==0.5
+huggingface-hub==0.19.4
+scipy==1.11.4
+pydantic
+pydantic_core
+g2p_en
+
+[develop]
+pytest==7.4.3

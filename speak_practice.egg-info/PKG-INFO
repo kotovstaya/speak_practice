@@ -1,0 +1,11 @@
+Metadata-Version: 2.1
+Name: speak-practice
+Version: 0.0.1
+Summary: speak_practice
+Author: Anton Savinkov
+Author-email: antsavinkov@gmail.com
+License: MIT
+Platform: all
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Provides-Extra: develop

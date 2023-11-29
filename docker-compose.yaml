@@ -1,0 +1,37 @@
+version: \'3\'
+
+networks:
+  backend:
+    name: local
+    driver: bridge
+
+volumes:
+  postgres_data: {}
+  redis_data: {}
+
+services:
+  tg_bot:
+    hostname: health_check
+    build:
+      context: ./../
+      dockerfile: ./speak_practice/docker/Dockerfile_service
+    environment:
+      BOT_PUBLIC_PORT: 80
+    networks:
+      - backend
+
+  llm:
+    hostname: llm
+    image: ollama/ollama
+    command: serve && run mistral:7b-instruct
+    volumes:
+      - /Users/anton.savinkov/.ollama:/root/.ollama
+    ports:
+      - 11434:11434
+    networks:
+      - backend
+
+
+# ln -s /opt/homebrew/opt/libxslt/lib/libxslt.1.dylib  /opt/homebrew/anaconda3/envs/speak_practice/lib/libxslt.1.dylib
+# ln -s /opt/homebrew/opt/libxslt/lib/libexslt.0.dylib  /opt/homebrew/anaconda3/envs/speak_practice/lib/libexslt.0.dylib
+# ln -s /opt/homebrew/opt/libxml2/lib/libxml2.2.dylib /opt/homebrew/anaconda3/envs/speak_practice/lib/libxml2.2.dylib

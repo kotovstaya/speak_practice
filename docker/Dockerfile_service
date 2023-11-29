@@ -1,0 +1,9 @@
+from robd003/python3.10
+
+COPY ./speak_practice /speak_practice
+WORKDIR /speak_practice
+RUN pip install -r requirements.txt
+WORKDIR /speak_practice
+RUN python setup.py develop
+WORKDIR /speak_practice/speak_practice
+CMD ["python", "-m", "async_tg_service"]

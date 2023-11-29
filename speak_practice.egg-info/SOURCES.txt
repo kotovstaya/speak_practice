@@ -1,0 +1,14 @@
+setup.py
+speak_practice/__init__.py
+speak_practice/async_tg_service.py
+speak_practice/backend.py
+speak_practice/consts.py
+speak_practice/speak_assistant.py
+speak_practice/speech_to_text.py
+speak_practice/text_to_speech.py
+speak_practice/utils.py
+speak_practice.egg-info/PKG-INFO
+speak_practice.egg-info/SOURCES.txt
+speak_practice.egg-info/dependency_links.txt
+speak_practice.egg-info/requires.txt
+speak_practice.egg-info/top_level.txt
