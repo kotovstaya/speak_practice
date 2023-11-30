@@ -65,17 +65,31 @@ async def scheduler():
 
 @dp.message(F.voice)
 async def convert_audio(message: types.Voice):
-    global SPEECH_2_TEXT_MODEL, TEXT_2_SPEECH
+    global SPEECH_2_TEXT_MODEL, TEXT_2_SPEECH, assist_backend, assist_backend_process, assist_user_info, is_message_send, user_session_time
 
     user_id = message.from_user.id
-    tg_user = {"id": user_id}
+    user_session_time[user_id] = time.time()
 
     downloaded_file = await bot.download(message.voice.file_id)
     wav_file = save_voice_message(f'./../data/{user_id}', downloaded_file)
     transcription = SPEECH_2_TEXT_MODEL.predict_file(wav_file)
-    assist_main_loop = AssistantBackend().main_loop(transcription, tg_user=tg_user)
+
+    user_id = message.from_user.id
+    if user_id not in assist_user_info.keys():
+        is_message_send[user_id] = True
+        assist_user_info[user_id] = {"id": user_id}
+        assist_backend[user_id] = AssistantBackend()
+        assist_backend_process[user_id] = assist_backend[user_id].main_loop(transcription, tg_user=assist_user_info[user_id])
+
+    if is_message_send[user_id] == False:
+        logger.info(f"Skip this message: {transcription}")
+        return
+
+    if user_id in assist_backend.keys() and user_id not in assist_backend_process.keys():
+        assist_backend_process[user_id] = assist_backend[user_id].main_loop(transcription, tg_user=assist_user_info[user_id])
+
     while True:
-        conversation_object: ConversationYieldObject = await anext(assist_main_loop)
+        conversation_object: ConversationYieldObject = await anext(assist_backend_process[user_id])
         if conversation_object.is_the_end:
             break
     voice = TEXT_2_SPEECH.predict_with_save(conversation_object.text, "./../data/text_2_speech.wav")
