@@ -76,7 +76,7 @@ class TalkAssistant(BaseChatAssistant):
         self._init_chains()
 
     def _init_model(self) -> None:
-        self.model = Ollama(base_url="http://llm:11434", model="mistral:7b-instruct", temperature=0.0)
+        self.model = Ollama(base_url="http://localhost:11434", model="mistral:7b-instruct", temperature=0.0)
         HISTORY_LENGTH = 10
 
     def _init_memory(self):

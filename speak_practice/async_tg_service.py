@@ -16,11 +16,13 @@ from aiogram import Router, F
 from speak_practice.backend import AssistantBackend, ConversationYieldObject
 from telegram.parsemode import ParseMode
 from speak_practice.speech_to_text import SpeechToTextModel
+from speak_practice.text_to_speech import TextToSpeechModel
 from speak_practice.utils import save_voice_message
 
 logger = get_logger(__name__)
 
 SPEECH_2_TEXT_MODEL = SpeechToTextModel()
+TEXT_2_SPEECH = TextToSpeechModel()
 
 router = Router()
 
@@ -63,11 +65,22 @@ async def scheduler():
 
 @dp.message(F.voice)
 async def convert_audio(message: types.Voice):
-    global SPEECH_2_TEXT_MODEL
+    global SPEECH_2_TEXT_MODEL, TEXT_2_SPEECH
+
+    user_id = message.from_user.id
+    tg_user = {"id": user_id}
+
     downloaded_file = await bot.download(message.voice.file_id)
-    wav_file = save_voice_message(f'./../data/{message.from_user.id}', downloaded_file)
+    wav_file = save_voice_message(f'./../data/{user_id}', downloaded_file)
     transcription = SPEECH_2_TEXT_MODEL.predict_file(wav_file)
+    assist_main_loop = AssistantBackend().main_loop(transcription, tg_user=tg_user)
+    while True:
+        conversation_object: ConversationYieldObject = await anext(assist_main_loop)
+        if conversation_object.is_the_end:
+            break
+    voice = TEXT_2_SPEECH.predict_with_save(conversation_object.text, "./../data/text_2_speech.wav")
     await message.reply(f"Transcription: {transcription}")
+    await bot.send_voice(message.from_user.id, voice=voice)
 
 
 @dp.message(F.text)
