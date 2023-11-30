@@ -1,7 +1,8 @@
 import asyncio
 import os
+import subprocess
 from typing import Dict, Any
-
+from pydub import AudioSegment
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -10,14 +11,21 @@ import aioschedule
 
 from speak_practice.utils import get_logger
 
-from aiogram import Bot, Dispatcher, executor, types
+from aiogram import Bot, Dispatcher, types
+from aiogram import Router, F
 from speak_practice.backend import AssistantBackend, ConversationYieldObject
 from telegram.parsemode import ParseMode
+from speak_practice.speech_to_text import SpeechToTextModel
+from speak_practice.utils import save_voice_message
 
 logger = get_logger(__name__)
 
+SPEECH_2_TEXT_MODEL = SpeechToTextModel()
+
+router = Router()
+
 bot = Bot(token=os.getenv("TOKEN"))
-dp = Dispatcher(bot)
+dp = Dispatcher()
 
 
 assist_backend: Dict[int, AssistantBackend] = {}
@@ -53,8 +61,16 @@ async def scheduler():
         await asyncio.sleep(1)
 
 
-@dp.message_handler(content_types=['location'])
-@dp.message_handler()
+@dp.message(F.voice)
+async def convert_audio(message: types.Voice):
+    global SPEECH_2_TEXT_MODEL
+    downloaded_file = await bot.download(message.voice.file_id)
+    wav_file = save_voice_message(f'./../data/{message.from_user.id}', downloaded_file)
+    transcription = SPEECH_2_TEXT_MODEL.predict_file(wav_file)
+    await message.reply(f"Transcription: {transcription}")
+
+
+@dp.message(F.text)
 async def echo(message: types.Message):
     global assist_backend, assist_backend_process, assist_user_info, is_message_send, user_session_time
 
@@ -96,5 +112,9 @@ async def on_startup(_):
     asyncio.create_task(scheduler())
 
 
+async def main():
+    await dp.start_polling(bot, skip_updates=False, on_startup=on_startup)
+
+
 if __name__ == '__main__':
-    executor.start_polling(dp, skip_updates=False, on_startup=on_startup)
+    asyncio.run(main())
