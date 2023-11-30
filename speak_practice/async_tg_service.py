@@ -1,8 +1,6 @@
 import asyncio
 import os
-import subprocess
 from typing import Dict, Any
-from pydub import AudioSegment
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -85,7 +83,7 @@ async def convert_audio(message: types.Voice):
         logger.info(f"Skip this message: {transcription}")
         return
 
-    if user_id in assist_backend.keys() and user_id not in assist_backend_process.keys():
+    if user_id in assist_backend.keys():
         assist_backend_process[user_id] = assist_backend[user_id].main_loop(transcription, tg_user=assist_user_info[user_id])
 
     while True:
