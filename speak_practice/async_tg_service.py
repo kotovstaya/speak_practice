@@ -1,6 +1,7 @@
 import asyncio
 import os
 from typing import Dict, Any
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -12,7 +13,6 @@ from speak_practice.utils import get_logger
 from aiogram import Bot, Dispatcher, types
 from aiogram import Router, F
 from speak_practice.backend import AssistantBackend, ConversationYieldObject
-from telegram.parsemode import ParseMode
 from speak_practice.speech_to_text import SpeechToTextModel
 from speak_practice.text_to_speech import TextToSpeechModel
 from speak_practice.utils import save_voice_message
@@ -35,12 +35,31 @@ is_message_send: Dict[int, bool] = {}
 user_session_time: Dict[int, Any] = {}
 
 
-async def clean_sessions():
+def update_global_variables(user_id: int, text: str) -> bool:
+    global assist_user_info , user_session_time, is_message_send, assist_backend, assist_backend_process
+    user_session_time[user_id] = time.time()
+
+    if user_id not in assist_user_info.keys():
+        is_message_send[user_id] = True
+        assist_user_info[user_id] = {"id": user_id}
+        assist_backend[user_id] = AssistantBackend()
+        assist_backend_process[user_id] = assist_backend[user_id].main_loop(text, tg_user=assist_user_info[user_id])
+
+    if not is_message_send[user_id]:
+        logger.info(f"Skip this message: {text}")
+        return False
+
+    if user_id in assist_backend.keys():
+        assist_backend_process[user_id] = assist_backend[user_id].main_loop(text, tg_user=assist_user_info[user_id])
+    return True
+
+
+async def clean_sessions() -> None:
     global user_session_time
     _t = time.time()
     keys = list(user_session_time.keys())
     for key in keys:
-        if (_t - user_session_time[key])/ 60 > 10:
+        if (_t - user_session_time[key]) g/ 60 > 10:
             logger.info(f"key: {key}")
             if key in assist_backend:
                 del assist_backend[key]
@@ -59,25 +78,6 @@ async def scheduler():
     while True:
         await aioschedule.run_pending()
         await asyncio.sleep(1)
-
-
-def update_global_variables(user_id, text: str):
-    global assist_user_info , user_session_time, is_message_send, assist_backend, assist_backend_process
-    user_session_time[user_id] = time.time()
-
-    if user_id not in assist_user_info.keys():
-        is_message_send[user_id] = True
-        assist_user_info[user_id] = {"id": user_id}
-        assist_backend[user_id] = AssistantBackend()
-        assist_backend_process[user_id] = assist_backend[user_id].main_loop(text, tg_user=assist_user_info[user_id])
-
-    if not is_message_send[user_id]:
-        logger.info(f"Skip this message: {text}")
-        return False
-
-    if user_id in assist_backend.keys():
-        assist_backend_process[user_id] = assist_backend[user_id].main_loop(text, tg_user=assist_user_info[user_id])
-    return True
 
 
 @dp.message(F.voice)
