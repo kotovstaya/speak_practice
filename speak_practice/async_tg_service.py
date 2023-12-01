@@ -59,7 +59,7 @@ async def clean_sessions() -> None:
     _t = time.time()
     keys = list(user_session_time.keys())
     for key in keys:
-        if (_t - user_session_time[key]) g/ 60 > 10:
+        if (_t - user_session_time[key]) / 60 > 10:
             logger.info(f"key: {key}")
             if key in assist_backend:
                 del assist_backend[key]
