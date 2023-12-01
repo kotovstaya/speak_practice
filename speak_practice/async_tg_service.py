@@ -61,35 +61,39 @@ async def scheduler():
         await asyncio.sleep(1)
 
 
+def update_global_variables(user_id, text: str):
+    global assist_user_info , user_session_time, is_message_send, assist_backend, assist_backend_process
+    user_session_time[user_id] = time.time()
+
+    if user_id not in assist_user_info.keys():
+        is_message_send[user_id] = True
+        assist_user_info[user_id] = {"id": user_id}
+        assist_backend[user_id] = AssistantBackend()
+        assist_backend_process[user_id] = assist_backend[user_id].main_loop(text, tg_user=assist_user_info[user_id])
+
+    if not is_message_send[user_id]:
+        logger.info(f"Skip this message: {text}")
+        return False
+
+    if user_id in assist_backend.keys():
+        assist_backend_process[user_id] = assist_backend[user_id].main_loop(text, tg_user=assist_user_info[user_id])
+    return True
+
+
 @dp.message(F.voice)
 async def convert_audio(message: types.Voice):
     global SPEECH_2_TEXT_MODEL, TEXT_2_SPEECH, assist_backend, assist_backend_process, assist_user_info, is_message_send, user_session_time
 
     user_id = message.from_user.id
-    user_session_time[user_id] = time.time()
 
     downloaded_file = await bot.download(message.voice.file_id)
     wav_file = save_voice_message(f'./../data/{user_id}', downloaded_file)
     transcription = SPEECH_2_TEXT_MODEL.predict_file(wav_file)
 
-    user_id = message.from_user.id
-    if user_id not in assist_user_info.keys():
-        is_message_send[user_id] = True
-        assist_user_info[user_id] = {"id": user_id}
-        assist_backend[user_id] = AssistantBackend()
-        assist_backend_process[user_id] = assist_backend[user_id].main_loop(transcription, tg_user=assist_user_info[user_id])
-
-    if is_message_send[user_id] == False:
-        logger.info(f"Skip this message: {transcription}")
+    if not update_global_variables(user_id, transcription):
         return
 
-    if user_id in assist_backend.keys():
-        assist_backend_process[user_id] = assist_backend[user_id].main_loop(transcription, tg_user=assist_user_info[user_id])
-
-    while True:
-        conversation_object: ConversationYieldObject = await anext(assist_backend_process[user_id])
-        if conversation_object.is_the_end:
-            break
+    conversation_object: ConversationYieldObject = await anext(assist_backend_process[user_id])
     voice = TEXT_2_SPEECH.predict_with_save(conversation_object.text, "./../data/text_2_speech.wav")
     await message.reply(f"Transcription: {transcription}")
     await bot.send_voice(message.from_user.id, voice=voice)
@@ -100,37 +104,12 @@ async def echo(message: types.Message):
     global assist_backend, assist_backend_process, assist_user_info, is_message_send, user_session_time
 
     user_id = message.from_user.id
-    user_session_time[user_id] = time.time()
 
-    user_id = message.from_user.id
-    if user_id not in assist_user_info.keys():
-        is_message_send[user_id] = True
-        assist_user_info[user_id] = {"id": user_id}
-        assist_backend[user_id] = AssistantBackend()
-        assist_backend_process[user_id] = assist_backend[user_id].main_loop(message.text, tg_user=assist_user_info[user_id])
-
-    if is_message_send[user_id] == False:
-        logger.info(f"Skip this message: {message.text}")
+    if not update_global_variables(user_id, message.text):
         return
 
-    if user_id in assist_backend.keys() and user_id not in assist_backend_process.keys():
-        assist_backend_process[user_id] = assist_backend[user_id].main_loop(message.text, tg_user=assist_user_info[user_id])
-
-    while True:
-        try:
-            is_message_send[user_id] = False
-            conversation_object: ConversationYieldObject = await anext(assist_backend_process[user_id])
-        except Exception as ex:
-            empty_conversation_object = ConversationYieldObject(text=str(ex), is_the_end=True)
-            logger.info(f"tg_bot {message.from_user.id}: {empty_conversation_object}")
-            conversation_object = empty_conversation_object
-
-        await message.answer(conversation_object.text, parse_mode=ParseMode.HTML)
-
-        if conversation_object.is_the_end:
-            is_message_send[user_id] = True
-            del assist_backend_process[user_id]
-            break
+    conversation_object: ConversationYieldObject = await anext(assist_backend_process[user_id])
+    await message.reply(conversation_object.text)
 
 
 async def on_startup(_):
